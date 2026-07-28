@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O'quvchi Panel — QR Davomat</title>
+  <meta name="description" content="O'quvchi shaxsiy kabineti: davomat tarixi va PDF yuklab olish.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/scanner.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<div class="user-panel" id="studentPanel" style="display:none;">
+
+  <!-- Header -->
+  <div class="panel-header">
+    <div class="panel-avatar" id="sAvatar">S</div>
+    <div>
+      <div class="panel-info-name" id="sName">—</div>
+      <div class="panel-info-sub" id="sSub">O'quvchi</div>
+      <div style="margin-top:8px;">
+        <span class="badge" id="sStatusBadge">—</span>
+      </div>
+    </div>
+    <div class="panel-header-right">
+      <div id="sQrSmall"></div>
+      <div style="font-size:20px;font-weight:900;color:var(--secondary);letter-spacing:6px;font-family:monospace;" id="sCode">—</div>
+      <button class="btn btn-ghost btn-sm" onclick="downloadMyQR()">⬇️ QR yuklab olish</button>
+      <button class="btn btn-ghost btn-sm" onclick="Auth.logout()">🚪 Chiqish</button>
+    </div>
+  </div>
+
+  <!-- Info cards -->
+  <div class="detail-info-grid" id="sInfoGrid" style="margin-bottom:24px;"></div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="sStats"></div>
+
+  <!-- Month selector -->
+  <div style="display:flex;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap;">
+    <label class="form-label">📅 Oy tanlang:</label>
+    <select class="form-select" id="sMonthSel" style="max-width:200px;" onchange="renderMyMonthly()">
+    </select>
+    <button class="btn btn-primary btn-sm" onclick="downloadMyPDF()">📄 PDF yuklab olish</button>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-card" style="margin-top:16px;">
+    <div class="chart-canvas-wrap" style="height:200px;"><canvas id="sMonthChart"></canvas></div>
+  </div>
+
+  <!-- Calendar grid -->
+  <div id="sMonthGrid" style="margin-top:16px;"></div>
+
+  <!-- Month stats -->
+  <div id="sMonthStats" style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;"></div>
+
+  <!-- Login credentials -->
+  <div class="creds-box" style="margin-top:24px;">
+    <div class="creds-title">🔐 Sizning login ma'lumotlaringiz</div>
+    <div class="creds-row"><span class="creds-key">Login:</span><span class="creds-val" id="sLogin">—</span></div>
+    <div class="creds-row"><span class="creds-key">Parol:</span><span class="creds-val" id="sPass">—</span></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/pdf.js"></script>
+<script>
+  const currentUser = Auth.requireAuth(['student']);
+  let student = null;
+
+  function getMonthOptions(currentYear, currentMonth) {
+    const months = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+    let opts = '';
+    for (let y = currentYear; y >= currentYear - 1; y--) {
+      const maxM = y === currentYear ? currentMonth : 12;
+      for (let m = maxM; m >= 1; m--) {
+        const val = `${y}-${m}`;
+        const sel = (y === currentYear && m === currentMonth) ? 'selected' : '';
+        opts += `<option value="${val}" ${sel}>${months[m]} ${y}</option>`;
+      }
+    }
+    return opts;
+  }
+
+  function renderAttGrid(containerId, monthData) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const dayHeaders = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak'];
+    let html = '<div class="attendance-grid">';
+    dayHeaders.forEach(h => { html += `<div class="att-cell header">${h}</div>`; });
+    const firstDate = new Date(monthData.days[0].date);
+    let startOffset = firstDate.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+    for (let i = 0; i < startOffset; i++) html += '<div class="att-cell" style="background:transparent;border:none;"></div>';
+    monthData.days.forEach(d => {
+      if (d.isWeekend) {
+        html += `<div class="att-cell weekend"><span class="day-num">${d.day}</span></div>`;
+      } else {
+        html += `<div class="att-cell ${d.came ? 'came' : 'not-came'}" title="${d.time||''}">
+          <span class="day-num">${d.day}</span>
+          ${d.time ? `<span class="day-time">${d.time}</span>` : ''}
+        </div>`;
+      }
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  function renderMonthStats(containerId, monthData) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const pct = monthData.workDays ? Math.round(monthData.cameDays / monthData.workDays * 100) : 0;
+    el.innerHTML = `
+      <div class="stat-card green" style="flex:1;padding:14px;min-width:100px;">
+        <div class="stat-value" style="font-size:24px;">${monthData.cameDays}</div>
+        <div class="stat-label" style="font-size:11px;">Kelgan kun</div>
+      </div>
+      <div class="stat-card red" style="flex:1;padding:14px;min-width:100px;">
+        <div class="stat-value" style="font-size:24px;">${monthData.notCameDays}</div>
+        <div class="stat-label" style="font-size:11px;">Kelmagan kun</div>
+      </div>
+      <div class="stat-card purple" style="flex:1;padding:14px;min-width:100px;">
+        <div class="stat-value" style="font-size:24px;">${pct}%</div>
+        <div class="stat-label" style="font-size:11px;">Davomat foizi</div>
+      </div>
+    `;
+  }
+
+  function renderMyMonthly() {
+    if (!student) return;
+    const sel = document.getElementById('sMonthSel');
+    const [year, month] = sel.value.split('-').map(Number);
+    const monthData = DB.getMonthlyAttendance(student.id, 'student', year, month);
+    Charts.renderMonthly('sMonthChart', monthData, student.name);
+    renderAttGrid('sMonthGrid', monthData);
+    renderMonthStats('sMonthStats', monthData);
+  }
+
+  function downloadMyPDF() {
+    if (!student) return;
+    const sel = document.getElementById('sMonthSel');
+    const [year, month] = sel.value.split('-').map(Number);
+    const monthData = DB.getMonthlyAttendance(student.id, 'student', year, month);
+    PDFManager.generateAttendance(student, 'student', monthData, year, month);
+  }
+
+  function downloadMyQR() {
+    const qrEl = document.getElementById('sQrSmall');
+    const canvas = qrEl?.querySelector('canvas');
+    const img = qrEl?.querySelector('img');
+    if (!canvas && !img) return;
+    const link = document.createElement('a');
+    link.download = (student?.name || 'student') + '_qr.png';
+    link.href = canvas ? canvas.toDataURL() : img.src;
+    link.click();
+  }
+
+  function init() {
+    if (!currentUser || !currentUser.studentId) { Auth.logout(); return; }
+    student = DB.getStudentById(currentUser.studentId);
+    if (!student) { Auth.logout(); return; }
+
+    document.getElementById('studentPanel').style.display = 'block';
+    document.getElementById('sAvatar').textContent = student.name[0].toUpperCase();
+    document.getElementById('sName').textContent = student.name;
+
+    const teacher = DB.getTeacherById(student.teacherId);
+    const group = DB.getGroupById(student.groupId);
+    document.getElementById('sSub').textContent = (group ? group.name : 'O\'quvchi') + (teacher ? ' • ' + teacher.name : '');
+    document.getElementById('sCode').textContent = student.code;
+    document.getElementById('sLogin').textContent = student.username;
+    document.getElementById('sPass').textContent = student.password;
+
+    const came = DB.isAttendedToday(student.id);
+    const badge = document.getElementById('sStatusBadge');
+    badge.textContent = came ? '✅ Bugun keldi' : '❌ Bugun kelmadi';
+    badge.className = 'badge ' + (came ? 'badge-success' : 'badge-danger');
+
+    // Info grid
+    document.getElementById('sInfoGrid').innerHTML = `
+      <div class="detail-info-item">
+        <div class="detail-info-label">Telefon</div>
+        <div class="detail-info-value">${student.phone || '-'}</div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">O'qituvchi</div>
+        <div class="detail-info-value">${teacher ? teacher.name + ' ' + (teacher.surname||'') : '-'}</div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">Guruh</div>
+        <div class="detail-info-value">${group ? group.name : '-'}</div>
+      </div>
+      <div class="detail-info-item">
+        <div class="detail-info-label">Kod</div>
+        <div class="detail-info-value" style="font-family:monospace;color:var(--secondary);">${student.code}</div>
+      </div>
+    `;
+
+    // Stats
+    const balls = DB.getTotalBalls(student.id);
+    const totalAtt = DB.getAttendanceByPerson(student.id).length;
+    document.getElementById('sStats').innerHTML = `
+      <div class="stat-card purple" style="padding:16px;">
+        <div class="stat-icon purple">🏆</div>
+        <div class="stat-value">${balls}</div>
+        <div class="stat-label">Jami ball</div>
+      </div>
+      <div class="stat-card green" style="padding:16px;">
+        <div class="stat-icon green">📅</div>
+        <div class="stat-value">${totalAtt}</div>
+        <div class="stat-label">Jami kelgan kun</div>
+      </div>
+      <div class="stat-card ${came ? 'green' : 'red'}" style="padding:16px;">
+        <div class="stat-icon ${came ? 'green' : 'red'}">${came ? '✅' : '❌'}</div>
+        <div class="stat-value">${came ? 'Ha' : 'Yo\'q'}</div>
+        <div class="stat-label">Bugun keldi?</div>
+      </div>
+    `;
+
+    // QR
+    setTimeout(() => {
+      const qrEl = document.getElementById('sQrSmall');
+      qrEl.innerHTML = '';
+      new QRCode(qrEl, {
+        text: 'STUDENT:' + student.id,
+        width: 80, height: 80,
+        colorDark: '#1a1a2e', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    }, 100);
+
+    // Month options
+    const now = new Date();
+    document.getElementById('sMonthSel').innerHTML = getMonthOptions(now.getFullYear(), now.getMonth()+1);
+    renderMyMonthly();
+  }
+
+  init();
+</script>
+</body>
+</html>

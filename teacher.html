@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O'qituvchi Panel — Premium</title>
+  <meta name="description" content="O'qituvchi shaxsiy kabineti.">
+  <link rel="stylesheet" href="css/premium-theme.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="premium-layout">
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div class="pr-modal-overlay" id="sidebarOverlay" style="z-index:90;"></div>
+
+  <!-- Sidebar -->
+  <aside class="pr-sidebar" id="sidebar">
+    <div class="pr-sidebar-header">
+      <div class="pr-logo-icon"><i data-lucide="qr-code"></i></div>
+      <div class="pr-logo-text">QR Davomat<br><span>Teacher Panel</span></div>
+    </div>
+
+    <nav class="pr-nav">
+      <a class="pr-nav-item active" data-section="dashboard" onclick="showSection('dashboard',this)">
+        <i data-lucide="layout-dashboard" width="20" height="20"></i> Dashboard
+      </a>
+      <a class="pr-nav-item" data-section="students" onclick="showSection('students',this)">
+        <i data-lucide="users" width="20" height="20"></i> O'quvchilar
+        <span class="pr-badge" id="studentCountBadge">0</span>
+      </a>
+      <a class="pr-nav-item" data-section="groups" onclick="showSection('groups',this)">
+        <i data-lucide="folder" width="20" height="20"></i> Guruhlarim
+        <span class="pr-badge" id="groupCountBadge">0</span>
+      </a>
+    </nav>
+
+    <div class="pr-sidebar-footer">
+      <div class="pr-user-profile" onclick="openTeacherProfile()" title="Profil">
+        <div class="pr-user-avatar" id="tAvatar" style="background-size:cover;background-position:center;">T</div>
+        <div class="pr-user-info">
+          <div class="pr-user-name" id="tName">—</div>
+          <div class="pr-user-role">O'qituvchi Profilim</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="pr-main">
+    <header class="pr-topbar">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <button class="pr-icon-btn" id="sidebarToggle" style="display:none;"><i data-lucide="menu"></i></button>
+        <div class="pr-search-box">
+          <i data-lucide="search"></i>
+          <input type="text" placeholder="Global qidiruv..." id="globalSearch">
+        </div>
+      </div>
+      <div class="pr-topbar-actions">
+        <div id="todayDate" style="color:var(--pr-text-muted); font-size:14px; font-weight:500;"></div>
+        <button class="pr-icon-btn" id="darkModeToggle" title="Tungi rejim"><i data-lucide="moon"></i></button>
+        <button class="pr-icon-btn"><i data-lucide="bell"></i></button>
+        <button class="pr-btn pr-btn-primary" onclick="showTeacherQr()"><i data-lucide="qr-code" width="18" height="18"></i> QR Kodim</button>
+      </div>
+    </header>
+
+    <div class="pr-content">
+      
+      <!-- SECTION: DASHBOARD -->
+      <section id="section-dashboard" class="pr-section active">
+        <div class="pr-page-header">
+          <div>
+            <h1 class="pr-page-title">Dashboard</h1>
+            <p class="pr-page-sub">Sizning ko'rsatkichlaringiz va davomat statistikangiz</p>
+          </div>
+          <div class="pr-pill" id="tStatusBadge">—</div>
+        </div>
+
+        <div class="pr-stats-grid" id="dashStats">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="pr-card" style="padding:0; overflow:hidden;">
+          <div class="pr-card-header" style="padding:24px 24px 0 24px; margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <h3 class="pr-card-title" style="margin:0;"><i data-lucide="bar-chart-2" style="vertical-align:middle;margin-right:8px;"></i> Oylik Dinamika</h3>
+              <div style="display:flex; gap:12px;">
+                <select class="pr-select" style="padding:8px 12px; width:auto;" id="tMonthSel" onchange="renderMyMonthly()"></select>
+                <button class="pr-btn pr-btn-primary" onclick="downloadMyPDF()" style="padding:8px 16px;"><i data-lucide="download" width="16" height="16"></i> Export</button>
+              </div>
+            </div>
+          </div>
+          <div style="padding:24px;">
+            <canvas id="tMonthChart" style="max-height:300px; width:100%;"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: STUDENTS -->
+      <section id="section-students" class="pr-section">
+        <div class="pr-page-header">
+          <div>
+            <h1 class="pr-page-title">O'quvchilar</h1>
+            <p class="pr-page-sub">Sizning o'quvchilaringiz va davomati</p>
+          </div>
+          <button class="pr-btn pr-btn-primary" onclick="openAddStudentModal()"><i data-lucide="plus" width="18" height="18"></i> O'quvchi qo'shish</button>
+        </div>
+
+        <div class="pr-card" style="padding:20px; margin-bottom:24px; display:flex; gap:16px;">
+          <div class="pr-search-box" style="flex:1;">
+            <i data-lucide="search"></i>
+            <input type="text" id="studentSearch" placeholder="Ism yoki kod bilan izlash..." oninput="applyStudentFilters()">
+          </div>
+          <select class="pr-select" style="width:200px;" id="sFilter-group" onchange="applyStudentFilters()"></select>
+          <select class="pr-select" style="width:200px;" id="sFilter-status" onchange="applyStudentFilters()">
+            <option value="all">🚦 Barcha holatlar</option>
+            <option value="came">🟢 Bugun kelganlar</option>
+            <option value="notcame">🔴 Kelmaganlar</option>
+          </select>
+          <button class="pr-icon-btn" onclick="resetStudentFilters()"><i data-lucide="rotate-ccw"></i></button>
+        </div>
+
+        <div class="pr-table-wrap">
+          <table class="pr-table">
+            <thead>
+              <tr>
+                <th>O'quvchi</th>
+                <th>Guruh</th>
+                <th>Telefon</th>
+                <th>Bugungi Holat</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+          <div id="studentEmptyState" style="display:none; padding:60px 0; text-align:center; color:var(--pr-text-muted);">
+            <i data-lucide="users" width="48" height="48" style="opacity:0.3; margin-bottom:16px;"></i>
+            <h3>O'quvchilar topilmadi</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION: GROUPS -->
+      <section id="section-groups" class="pr-section">
+        <div class="pr-page-header">
+          <div>
+            <h1 class="pr-page-title">Guruhlarim</h1>
+            <p class="pr-page-sub">Guruhlarni boshqarish va o'quvchilarni ko'rish</p>
+          </div>
+          <button class="pr-btn pr-btn-primary" onclick="openAddGroupModal()"><i data-lucide="plus" width="18" height="18"></i> Guruh yaratish</button>
+        </div>
+
+        <div class="pr-cards-grid" id="groupCards">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- SECTION: GROUP DETAIL -->
+      <section id="section-group-detail" class="pr-section">
+        <div class="pr-page-header">
+          <div>
+            <button class="pr-btn" style="background:transparent; border:1px solid var(--pr-border); color:var(--pr-text-main); margin-bottom:16px; padding:8px 16px;" onclick="showSection('groups')">
+              <i data-lucide="arrow-left" width="18" height="18"></i> Orqaga
+            </button>
+            <h1 class="pr-page-title" id="gdPageTitle">Guruh o'quvchilari</h1>
+            <p class="pr-page-sub">Bu guruhdagi o'quvchilar davomati</p>
+          </div>
+        </div>
+        <div class="pr-table-wrap">
+          <table class="pr-table">
+            <thead>
+              <tr>
+                <th>O'quvchi</th>
+                <th style="text-align:right;">Davomat (Bugun)</th>
+              </tr>
+            </thead>
+            <tbody id="gdPageTableBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- Add Student Modal -->
+  <div class="pr-modal-overlay" id="addStudentModal">
+    <div class="pr-modal">
+      <div class="pr-modal-header">
+        <div class="pr-modal-title">O'quvchi qo'shish</div>
+        <button class="pr-modal-close" onclick="closeModal('addStudentModal')"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <form id="addStudentForm">
+        <div class="pr-modal-body">
+          <div class="pr-input-group">
+            <label class="pr-label">Ism familiyasi</label>
+            <input type="text" id="sName" class="pr-input" required placeholder="Masalan: Alisher Navoiy">
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">Telefon</label>
+            <input type="text" id="sPhone" class="pr-input" placeholder="+998 90 123 45 67">
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">Guruh</label>
+            <select id="sGroup" class="pr-select" required></select>
+          </div>
+        </div>
+        <div class="pr-modal-footer">
+          <button type="button" class="pr-btn" style="background:transparent;border:1px solid var(--pr-border);" onclick="closeModal('addStudentModal')">Bekor qilish</button>
+          <button type="submit" class="pr-btn pr-btn-primary">Saqlash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Teacher Profile Modal -->
+  <div class="pr-modal-overlay" id="profileModal">
+    <div class="pr-modal">
+      <div class="pr-modal-header">
+        <div class="pr-modal-title">Mening Profilim</div>
+        <button class="pr-modal-close" onclick="closeModal('profileModal')"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <form id="profileForm" onsubmit="event.preventDefault(); saveTeacherProfile();">
+        <div class="pr-modal-body">
+          <div style="display:flex; justify-content:center; margin-bottom:24px;">
+            <div id="tProfileAvatarPreview" style="width:80px; height:80px; border-radius:50%; background-color:var(--pr-primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; background-size:cover; background-position:center;"></div>
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">To'liq ism <span style="color:var(--pr-danger)">*</span></label>
+            <input type="text" id="tProfName" class="pr-input" required>
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">Login <span style="color:var(--pr-danger)">*</span></label>
+            <input type="text" id="tProfUsername" class="pr-input" required>
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">Yangi Parol (ixtiyoriy)</label>
+            <input type="password" id="tProfPassword" class="pr-input" placeholder="O'zgartirish uchun kiriting">
+            <small style="color:var(--pr-text-muted); display:block; margin-top:4px;">Parolni o'zgartirishni xohlamasangiz bo'sh qoldiring.</small>
+          </div>
+          <div class="pr-input-group">
+            <label class="pr-label">Profil rasmi (Fayl tanlang) (ixtiyoriy)</label>
+            <input type="file" id="tProfAvatarFile" accept="image/*" class="pr-input" onchange="handleTeacherAvatarFile(event)">
+            <input type="hidden" id="tProfAvatarBase64">
+          </div>
+        </div>
+        <div class="pr-modal-footer">
+          <button type="button" class="pr-btn" style="background:var(--pr-danger-bg); color:var(--pr-danger);" onclick="Auth.logout()"><i data-lucide="log-out" width="16" height="16"></i> Tizimdan chiqish</button>
+          <div style="flex:1;"></div>
+          <button type="button" class="pr-btn" style="background:transparent;border:1px solid var(--pr-border);" onclick="closeModal('profileModal')">Bekor qilish</button>
+          <button type="submit" class="pr-btn pr-btn-primary">Saqlash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Group Modal -->
+  <div class="pr-modal-overlay" id="addGroupModal">
+    <div class="pr-modal">
+      <div class="pr-modal-header">
+        <div class="pr-modal-title">Guruh yaratish</div>
+        <button class="pr-modal-close" onclick="closeModal('addGroupModal')"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <form id="addGroupForm">
+        <div class="pr-modal-body">
+          <div class="pr-input-group">
+            <label class="pr-label">Guruh nomi</label>
+            <input type="text" id="gName" class="pr-input" required placeholder="Masalan: Ingliz tili (Beginner)">
+          </div>
+        </div>
+        <div class="pr-modal-footer">
+          <button type="button" class="pr-btn" style="background:transparent;border:1px solid var(--pr-border);" onclick="closeModal('addGroupModal')">Bekor qilish</button>
+          <button type="submit" class="pr-btn pr-btn-primary">Yaratish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Teacher QR Modal -->
+  <div class="pr-modal-overlay" id="qrModal">
+    <div class="pr-modal" style="text-align:center;">
+      <div class="pr-modal-header" style="justify-content:flex-end;">
+        <button class="pr-modal-close" onclick="closeModal('qrModal')"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <div class="pr-modal-body" style="padding-top:0;">
+        <h2 style="margin-top:0; font-weight:800; font-size:24px;">Mening QR Kodim</h2>
+        <div id="tQrLarge" style="display:flex; justify-content:center; margin:24px 0; padding:24px; background:#fff; border-radius:24px; border:1px solid var(--pr-border);"></div>
+        <div style="font-size:28px; font-weight:900; color:var(--pr-primary); letter-spacing:8px; font-family:monospace; margin-bottom:24px;" id="tCodeModal">—</div>
+      </div>
+      <div class="pr-modal-footer" style="justify-content:center;">
+        <button class="pr-btn pr-btn-primary" style="width:100%; justify-content:center;" onclick="downloadTeacherQrLarge()"><i data-lucide="download"></i> PNG formatda yuklash</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Student Detail Modal -->
+  <div class="pr-modal-overlay" id="studentDetailModal">
+    <div class="pr-modal" style="max-width:600px;">
+      <div class="pr-modal-header">
+        <div class="pr-modal-title">O'quvchi davomat tarixi</div>
+        <button class="pr-modal-close" onclick="closeModal('studentDetailModal')"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <div class="pr-modal-body" id="studentDetailContent" style="max-height:80vh; overflow-y:auto; padding:20px;">
+        <!-- JS fills this -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toastContainer" style="position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:12px;"></div>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/teacher.js"></script>
+</body>
+</html>

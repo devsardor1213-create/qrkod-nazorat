@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — QR Davomat</title>
+  <meta name="description" content="Admin boshqaruv paneli: o'qituvchilar, o'quvchilar va davomat statistikasi.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Cache bust -->
+</head>
+<body>
+<div class="bg-animated"></div>
+
+<!-- Mobile sidebar toggle overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-layout">
+  <!-- ======= SIDEBAR ======= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon"><i data-lucide="qr-code"></i></div>
+      <div class="sidebar-logo-text">QR Davomat</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-section="dashboard" onclick="showSection('dashboard',this)">
+        <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Dashboard
+      </a>
+      
+      
+      <a class="nav-item" data-section="teachers" onclick="showSection('teachers',this)">
+        <span class="nav-icon"><i data-lucide="graduation-cap"></i></span> O'qituvchilar
+        <span class="nav-badge" id="teacherCount">0</span>
+      </a>
+      <a class="nav-item" data-section="students" onclick="showSection('students',this)">
+        <span class="nav-icon"><i data-lucide="users"></i></span> O'quvchilar
+        <span class="nav-badge" id="studentCount">0</span>
+      </a>
+      <a class="nav-item" data-section="groups" onclick="showSection('groups',this)">
+        <span class="nav-icon"><i data-lucide="folder"></i></span> Guruhlar
+      </a>
+
+      <a class="nav-item" data-section="balls" onclick="showSection('balls',this)">
+        <span class="nav-icon"><i data-lucide="award"></i></span> Reyting va Ballar
+      </a>
+
+
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="openProfileModal()" style="cursor: pointer;" title="Profilni tahrirlash">
+        <div class="sidebar-user-avatar" id="adminAvatarIcon">A</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="adminNameDisplay">Admin</div>
+          <div class="sidebar-user-role">Administrator</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost w-full" onclick="Auth.logout()" style="justify-content:center;">
+        <i data-lucide="log-out"></i> Chiqish
+      </button>
+    </div>
+  </aside>
+
+  <!-- ======= MAIN ======= -->
+  <main class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+        <div class="topbar-search">
+          <span class="icon"><i data-lucide="search" width="16" height="16"></i></span>
+          <input type="text" placeholder="Qidirish..." id="globalSearch">
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="todayDate">—</div>
+        <button class="topbar-action" id="darkModeToggle" title="Tungi rejim"><i data-lucide="moon" width="18" height="18"></i></button>
+        <button class="topbar-action" title="Bildirishnomalar"><i data-lucide="bell" width="18" height="18"></i></button>
+      </div>
+    </header>
+
+    <div class="content-area">
+      
+      <!-- ===== DASHBOARD SECTION ===== -->
+      <div id="section-dashboard" class="section active">
+        <!-- Welcome + Date -->
+        <div class="dash-welcome">
+          <div>
+            <!-- Welcome text removed per user request -->
+          </div>
+          <div class="dash-date-badge" id="dashDateBadge"></div>
+        </div>
+
+        <!-- 6 stat cards row -->
+        <div class="dash-stats-row" id="dashStats"></div>
+
+        <!-- Donut Charts Row -->
+        <div class="dash-row-2col" style="margin-top:20px;">
+          <div class="dash-chart-card">
+            <div class="dash-chart-header">
+              <span class="dash-chart-title"><i data-lucide="users"></i> O'quvchilar davomati</span>
+              <select class="dash-chart-select" disabled><option>Bugun ▾</option></select>
+            </div>
+            <div class="dash-chart-body">
+              <div class="dash-donut-wrap">
+                <canvas id="studentChart"></canvas>
+                <div class="dash-donut-center" id="studentDonutCenter">
+                  <div class="ddc-val">0</div>
+                  <div class="ddc-label">Jami o'quvchilar</div>
+                </div>
+              </div>
+              <div class="dash-donut-legend" id="studentLegend"></div>
+            </div>
+          </div>
+
+          <div class="dash-chart-card">
+            <div class="dash-chart-header">
+              <span class="dash-chart-title"><i data-lucide="graduation-cap"></i> O'qituvchilar davomati</span>
+              <select class="dash-chart-select" disabled><option>Bugun ▾</option></select>
+            </div>
+            <div class="dash-chart-body">
+              <div class="dash-donut-wrap">
+                <canvas id="teacherChart"></canvas>
+                <div class="dash-donut-center" id="teacherDonutCenter">
+                  <div class="ddc-val">0</div>
+                  <div class="ddc-label">Jami o'qituvchilar</div>
+                </div>
+              </div>
+              <div class="dash-donut-legend" id="teacherLegend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom row: Recent Scans + Weekly Chart + Announcements -->
+        <div class="dash-row-3col" style="margin-top:20px;">
+          <!-- So'nggi skanlar -->
+          <div class="dash-chart-card">
+            <div class="dash-chart-header">
+              <span class="dash-chart-title"><i data-lucide="clock"></i> So'nggi skanlar</span>
+              <button class="dash-tag-btn active">Barchasi</button>
+            </div>
+            <div class="dash-recent-list" id="recentList"></div>
+          </div>
+
+          <!-- Haftalik Chart -->
+          <div class="dash-chart-card">
+            <div class="dash-chart-header">
+              <span class="dash-chart-title"><i data-lucide="bar-chart-2"></i> Davomat statistikasi</span>
+              <span class="dash-tag-btn">7 kunlik ▾</span>
+            </div>
+            <div class="dash-chart-canvas-wrap">
+              <canvas id="weeklyChart"></canvas>
+            </div>
+          </div>
+
+          <!-- E'lonlar -->
+          <div class="dash-chart-card">
+            <div class="dash-chart-header">
+              <span class="dash-chart-title"><i data-lucide="megaphone"></i> E'lonlar</span>
+              <button class="dash-tag-btn active">Barchasi</button>
+            </div>
+            <div class="dash-announcements" id="announcements">
+              <div class="announce-item">
+                <div class="announce-icon" style="background:var(--success-bg);color:var(--success);"><i data-lucide="check-circle" width="18" height="18"></i></div>
+                <div class="announce-info">
+                  <div class="announce-title">Muhim e'lon</div>
+                  <div class="announce-desc">Tizim yangilandi va barcha funksiyalar ishlaydi.</div>
+                  <div class="announce-time">Bugun</div>
+                </div>
+              </div>
+              <div class="announce-item">
+                <div class="announce-icon" style="background:var(--primary-light);color:var(--primary);"><i data-lucide="calendar" width="18" height="18"></i></div>
+                <div class="announce-info">
+                  <div class="announce-title">Dars jadvali yangilandi</div>
+                  <div class="announce-desc">Yangi dars jadvali tasdiqlandi.</div>
+                  <div class="announce-time">1 kun oldin</div>
+                </div>
+              </div>
+              <div class="announce-item">
+                <div class="announce-icon" style="background:var(--warning-bg);color:var(--warning);"><i data-lucide="award" width="18" height="18"></i></div>
+                <div class="announce-info">
+                  <div class="announce-title">Reyting yangilandi</div>
+                  <div class="announce-desc">Eng faol o'quvchilar reytingi chiqarildi.</div>
+                  <div class="announce-time">2 kun oldin</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="dash-footer">
+          © 2025 QR Davomat. Barcha huquqlar himoyalangan. <span style="float:right;color:var(--text-muted);">Versiya 2.0.0</span>
+        </div>
+      </div>
+
+      <!-- ===== TEACHERS SECTION ===== -->
+      <div id="section-teachers" class="section">
+        <div class="page-header" style="align-items:flex-end;">
+          <div>
+            <div class="page-title" style="display:flex;align-items:center;gap:12px;">
+              <i data-lucide="graduation-cap"></i> O'qituvchilar 
+              <span id="teacherCountBadge" class="count-badge">0</span>
+            </div>
+            <div class="page-subtitle" style="margin-top:6px;">Barcha o'qituvchilar ro'yxati va davomati</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddTeacherModal()" style="border-radius:10px;padding:10px 20px;font-weight:600;letter-spacing:0.3px;"><i data-lucide="plus" width="18" height="18"></i> O'qituvchi qo'shish</button>
+        </div>
+
+        <div class="premium-filter-bar">
+          <div class="filter-top-row">
+            <div class="search-wrap premium-search">
+              <span class="search-icon"><i data-lucide="search" width="18" height="18"></i></span>
+              <input type="text" id="teacherSearch" class="form-input search-input" placeholder="Ism, familiya yoki kod bo'yicha qidirish..." oninput="applyTeacherFilters()">
+            </div>
+            
+            <div class="filter-controls">
+              <select id="tFilter-subject" class="form-input premium-select" onchange="applyTeacherFilters()">
+                <option value="">Barcha fanlar</option>
+                <!-- Filled dynamically if needed, or static based on job types -->
+                <option value="Ingliz tili">Ingliz tili</option>
+                <option value="Matematika">Matematika</option>
+                <option value="Fizika">Fizika</option>
+                <option value="IT">IT va Dasturlash</option>
+              </select>
+
+              <select id="tFilter-status" class="form-input premium-select" onchange="applyTeacherFilters()">
+                <option value="all">Barcha holatlar</option>
+                <option value="came">Bugun kelganlar</option>
+                <option value="notcame">Bugun kelmaganlar</option>
+              </select>
+
+              <select id="tFilter-sort" class="form-input premium-select" onchange="applyTeacherFilters()">
+                <option value="newest">Eng yangilari</option>
+                <option value="name_asc">A-Z Alfavit</option>
+                <option value="name_desc">Z-A Alfavit</option>
+                <option value="attendance_desc">Reytingi baland</option>
+              </select>
+
+              <button class="btn btn-outline" onclick="resetTeacherFilters()" title="Filtrlarni tozalash" style="border-radius:10px;padding:0 14px;"><i data-lucide="rotate-ccw" width="18" height="18"></i></button>
+            </div>
+          </div>
+          
+          <div class="active-filters-row" id="activeTeacherFilters" style="display:none;">
+            <!-- Active filter badges will be injected here -->
+          </div>
+        </div>
+
+        <!-- Grid view for teachers -->
+        <div class="cards-grid modern-cards-grid" id="teacherCards"></div>
+
+        <!-- Pagination -->
+        <div class="modern-pagination" id="teacherPagination" style="display:none;">
+          <button class="page-btn" id="tPagePrev" onclick="changeTeacherPage(-1)"><i data-lucide="chevron-left" width="18" height="18"></i> Oldingi</button>
+          <span class="page-indicator" id="tPageIndicator">1 / 1</span>
+          <button class="page-btn" id="tPageNext" onclick="changeTeacherPage(1)">Keyingi <i data-lucide="chevron-right" width="18" height="18"></i></button>
+        </div>
+      </div>
+
+      <!-- ===== STUDENTS SECTION (With Cascading Filter) ===== -->
+      <!-- ===== STUDENTS SECTION ===== -->
+      <div id="section-students" class="section">
+        <div class="page-header" style="align-items:flex-end;">
+          <div>
+            <div class="page-title" style="display:flex;align-items:center;gap:12px;">
+              <i data-lucide="users"></i> O'quvchilar 
+              <span id="studentCountBadge" class="count-badge">0</span>
+            </div>
+            <div class="page-subtitle" style="margin-top:6px;">Barcha o'quvchilar ro'yxati va davomati</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddStudentModal()" style="border-radius:10px;padding:10px 20px;font-weight:600;letter-spacing:0.3px;"><i data-lucide="plus" width="18" height="18"></i> O'quvchi qo'shish</button>
+        </div>
+
+        <!-- Quick Statistics -->
+        <div class="quick-stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:var(--primary-light);color:var(--primary);"><i data-lucide="graduation-cap"></i></div>
+            <div class="stat-info">
+              <div class="stat-label">Jami O'quvchilar</div>
+              <div class="stat-val" id="stat-total-students">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(34,197,94,0.1);color:var(--success);"><i data-lucide="user-check"></i></div>
+            <div class="stat-info">
+              <div class="stat-label">Bugun Kelganlar</div>
+              <div class="stat-val" id="stat-present-students">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(239,68,68,0.1);color:var(--danger);"><i data-lucide="user-x"></i></div>
+            <div class="stat-info">
+              <div class="stat-label">Bugun Kelmaganlar</div>
+              <div class="stat-val" id="stat-absent-students">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(245,158,11,0.1);color:var(--warning);"><i data-lucide="pie-chart"></i></div>
+            <div class="stat-info">
+              <div class="stat-label">Davomat Ko'rsatkichi</div>
+              <div class="stat-val" id="stat-attendance-percent">0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Premium Filter Toolbar -->
+        <div class="premium-filter-bar">
+          <div class="filter-top-row">
+            <div class="search-wrap premium-search">
+              <span class="search-icon"><i data-lucide="search" width="18" height="18"></i></span>
+              <input type="text" id="studentSearch" class="form-input search-input" placeholder="Ism, familiya yoki ID qidirish..." oninput="applyStudentFilters()">
+            </div>
+            
+            <div class="filter-controls">
+              <select id="sFilter-teacher" class="form-input premium-select" onchange="onStudentFilterTeacherChange(); applyStudentFilters()">
+                <option value="">Barcha o'qituvchilar</option>
+              </select>
+
+              <select id="sFilter-group" class="form-input premium-select" onchange="applyStudentFilters()" disabled>
+                <option value="">Barcha guruhlar</option>
+              </select>
+
+              <select id="sFilter-status" class="form-input premium-select" onchange="applyStudentFilters()">
+                <option value="all">Barcha holatlar</option>
+                <option value="came">Kelganlar</option>
+                <option value="notcame">Kelmaganlar</option>
+                <option value="late">Kechikkanlar</option>
+              </select>
+
+              <select id="sFilter-sort" class="form-input premium-select" onchange="applyStudentFilters()">
+                <option value="newest">Eng yangilari</option>
+                <option value="name_asc">A-Z Alfavit</option>
+                <option value="name_desc">Z-A Alfavit</option>
+                <option value="attendance_desc">Davomati baland</option>
+              </select>
+
+              <button class="btn btn-outline" onclick="resetStudentFilters()" title="Filtrlarni tozalash" style="border-radius:10px;padding:0 14px;"><i data-lucide="rotate-ccw" width="18" height="18"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modern Data Table -->
+        <div class="modern-table-container">
+          <table class="modern-table">
+            <thead>
+              <tr>
+                <th>O'quvchi</th>
+                <th>Guruh va O'qituvchi</th>
+                <th>Aloqa</th>
+                <th>Davomat (Bugun)</th>
+                <th>Davomat %</th>
+                <th>QR / Login</th>
+                <th style="text-align:right;">Harakatlar</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody"></tbody>
+          </table>
+          
+          <!-- Empty State -->
+          <div id="studentEmptyState" class="empty-state" style="display:none; padding:60px 20px;">
+            <div class="empty-icon" style="background:var(--primary-light); color:var(--primary); width:80px; height:80px; font-size:32px; border-radius:24px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="search-x" width="40" height="40"></i>
+            </div>
+            <div class="empty-text" style="font-size:20px; font-weight:700; color:var(--text-primary);">O'quvchilar topilmadi</div>
+            <div class="empty-sub" style="font-size:14px; margin-top:8px;">Filtrlarni o'zgartiring yoki yangi o'quvchi qo'shing.</div>
+            <button class="btn btn-primary" style="margin-top:24px; border-radius:10px; padding:10px 20px;" onclick="resetStudentFilters()">Filtrlarni tozalash</button>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="modern-pagination" id="studentPagination" style="display:none;">
+          <button class="page-btn" id="sPagePrev" onclick="changeStudentPage(-1)"><i data-lucide="chevron-left" width="18" height="18"></i> Oldingi</button>
+          <span class="page-indicator" id="sPageIndicator">1 / 1</span>
+          <button class="page-btn" id="sPageNext" onclick="changeStudentPage(1)">Keyingi <i data-lucide="chevron-right" width="18" height="18"></i></button>
+        </div>
+      </div>
+
+      <!-- ===== GROUPS SECTION ===== -->
+      <div id="section-groups" class="section">
+        <div class="page-header">
+          <div>
+            <div class="page-title"><i data-lucide="folder"></i> Guruhlar</div>
+            <div class="page-subtitle">O'quvchilar guruhlari ro'yxati</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddGroupModal()"><i data-lucide="plus" width="16" height="16"></i> Guruh qo'shish</button>
+        </div>
+        <div class="cards-grid" id="groupCards"></div>
+      </div>
+
+      <!-- ===== GROUP DETAIL SECTION ===== -->
+      <div id="section-group-detail" class="section">
+        <div class="page-header">
+          <div>
+            <button class="btn btn-outline" style="margin-bottom:12px; padding:6px 12px;" onclick="showSection('groups')">
+              <i data-lucide="arrow-left" width="16" height="16"></i> Orqaga
+            </button>
+            <div class="page-title" id="adminGdTitle">Guruh o'quvchilari</div>
+            <div class="page-subtitle">Guruh tarkibidagi o'quvchilar ro'yxati va holati</div>
+          </div>
+        </div>
+        <div class="admin-table">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>O'quvchi</th>
+                  <th>ID Kod</th>
+                  <th style="text-align:right;">Davomat (Bugun)</th>
+                </tr>
+              </thead>
+              <tbody id="adminGdTableBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BALLS SECTION ===== -->
+      <div id="section-balls" class="section">
+        <div class="page-header">
+          <div>
+            <div class="page-title"><i data-lucide="award"></i> Reyting va Ballar</div>
+            <div class="page-subtitle">Har bir skanerlash uchun 3 ball beriladi</div>
+          </div>
+        </div>
+        <div class="admin-table">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:50px;">O'rin</th>
+                  <th>Foydalanuvchi</th>
+                  <th>Turi</th>
+                  <th>Kod</th>
+                  <th>Jami Ball</th>
+                </tr>
+              </thead>
+              <tbody id="ballsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ============================
+     MODALS
+     ============================ -->
+
+<!-- Add Teacher Modal -->
+<div class="modal-overlay" id="addTeacherModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="graduation-cap"></i> Yangi o'qituvchi qo'shish</div>
+      <button class="modal-close" onclick="closeModal('addTeacherModal')"><i data-lucide="x" width="20" height="20"></i></button>
+    </div>
+    <div class="modal-body" id="addTeacherBody">
+      <div class="avatar-upload-container">
+        <label class="avatar-upload" id="tAvatarUpload">
+          <i data-lucide="camera" class="avatar-upload-icon"></i>
+          <img id="tAvatarPreview" class="avatar-preview" src="">
+          <input type="file" id="tAvatarInput" class="avatar-input" accept="image/*" onchange="previewAvatar(this, 'tAvatarPreview', 'tAvatarUpload')">
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Ismi <span class="form-required">*</span></label>
+          <input type="text" id="tName" class="form-input" placeholder="Ismi...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Familyasi <span class="form-required">*</span></label>
+          <input type="text" id="tSurname" class="form-input" placeholder="Familyasi...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefon raqami</label>
+          <input type="text" id="tPhone" class="form-input" placeholder="+998 90 000 00 00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ish turi</label>
+          <select id="tJobType" class="form-select">
+            <option value="O'qituvchi">O'qituvchi</option>
+            <option value="Murabbiy">Murabbiy</option>
+            <option value="Laborant">Laborant</option>
+            <option value="Boshqa">Boshqa</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- QR show area -->
+    <div id="teacherQrArea" style="display:none;padding:0 24px 20px;">
+      <div style="text-align:center;margin-bottom:12px;font-weight:700;color:var(--success);"><i data-lucide="check-circle" width="18" height="18"></i> Muvaffaqiyatli yaratildi! QR kod:</div>
+      <div class="qr-container">
+        <div id="teacherQrCode"></div>
+        <div id="teacherCredsBox" style="width:100%;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addTeacherModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="createTeacherBtn" onclick="createTeacher()">Yaratish va QR olish</button>
+      <button class="btn btn-success" id="saveTeacherBtn" style="display:none;" onclick="saveTeacherAndDownload()">Saqlash va Yuklash</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-overlay" id="addStudentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="users"></i> Yangi o'quvchi qo'shish</div>
+      <button class="modal-close" onclick="closeModal('addStudentModal')"><i data-lucide="x" width="20" height="20"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="avatar-upload-container">
+        <label class="avatar-upload" id="sAvatarUpload">
+          <i data-lucide="camera" class="avatar-upload-icon"></i>
+          <img id="sAvatarPreview" class="avatar-preview" src="">
+          <input type="file" id="sAvatarInput" class="avatar-input" accept="image/*" onchange="previewAvatar(this, 'sAvatarPreview', 'sAvatarUpload')">
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Ismi <span class="form-required">*</span></label>
+          <input type="text" id="sName" class="form-input" placeholder="O'quvchi ismi...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefon raqami</label>
+          <input type="text" id="sPhone" class="form-input" placeholder="+998 90 000 00 00">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">O'qituvchi <span class="form-required">*</span></label>
+          <select id="sTeacher" class="form-select" onchange="onAddStudentTeacherChange()">
+            <option value="">— Tanlang —</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Guruh <span class="form-required">*</span></label>
+          <select id="sGroup" class="form-select" disabled>
+            <option value="">— Avval o'qituvchi tanlang —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- QR show area -->
+    <div id="studentQrArea" style="display:none;padding:0 24px 20px;">
+      <div style="text-align:center;margin-bottom:12px;font-weight:700;color:var(--success);"><i data-lucide="check-circle" width="18" height="18"></i> Muvaffaqiyatli yaratildi! QR kod:</div>
+      <div class="qr-container">
+        <div id="studentQrCode"></div>
+        <div id="studentCredsBox" style="width:100%;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addStudentModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="createStudentBtn" onclick="createStudent()">Yaratish va QR olish</button>
+      <button class="btn btn-success" id="saveStudentBtn" style="display:none;" onclick="saveStudentAndDownload()">Saqlash va Yuklash</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal-overlay" id="addGroupModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="folder"></i> Guruh qo'shish</div>
+      <button class="modal-close" onclick="closeModal('addGroupModal')"><i data-lucide="x" width="20" height="20"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Guruh nomi <span class="form-required">*</span></label>
+        <input type="text" id="groupName" class="form-input" placeholder="Masalan: 10-A sinf...">
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">Biriktirilgan o'qituvchi <span class="form-required">*</span></label>
+        <select id="groupTeacher" class="form-select">
+          <option value="">— Tanlang —</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addGroupModal')">Bekor qilish</button>
+      <button class="btn btn-primary" onclick="createGroup()">Qo'shish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Teacher Detail Panel -->
+<div class="detail-overlay" id="teacherDetailOverlay">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-title">O'qituvchi profili</div>
+      <button class="detail-close" onclick="closeDetail('teacherDetailOverlay')"><i data-lucide="x" width="20" height="20"></i></button>
+    </div>
+    <div id="teacherDetailContent"></div>
+  </div>
+</div>
+
+<!-- Student Detail Panel -->
+<div class="detail-overlay" id="studentDetailOverlay">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-title">O'quvchi profili</div>
+      <button class="detail-close" onclick="closeDetail('studentDetailOverlay')"><i data-lucide="x" width="20" height="20"></i></button>
+    </div>
+    <div id="studentDetailContent"></div>
+  </div>
+</div>
+
+<!-- Profil Oynasi -->
+<div class="modal-overlay" id="profileModal" onclick="closeModal('profileModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Mening Profilim</div>
+      <button class="modal-close" onclick="closeModal('profileModal')"><i data-lucide="x"></i></button>
+    </div>
+    <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
+      <div class="modal-body">
+        <div style="text-align:center; margin-bottom: 24px;">
+          <div id="profileAvatarPreview" style="width:80px; height:80px; border-radius:50%; background:var(--primary); color:#fff; font-size:32px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; background-size:cover; background-position:center;">A</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">To'liq ism <span class="form-required">*</span></label>
+          <input type="text" id="profName" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Login <span class="form-required">*</span></label>
+          <input type="text" id="profUsername" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Yangi Parol (ixtiyoriy)</label>
+          <input type="password" id="profPassword" class="form-input" placeholder="O'zgartirish uchun kiriting">
+          <small style="color:var(--text-muted); display:block; margin-top:4px;">Parolni o'zgartirishni xohlamasangiz bo'sh qoldiring.</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Profil rasmi (Fayl tanlang) (ixtiyoriy)</label>
+          <input type="file" id="profAvatarFile" accept="image/*" class="form-input" onchange="handleAvatarFileSelect(event)">
+          <input type="hidden" id="profAvatarBase64">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('profileModal')">Bekor qilish</button>
+        <button type="submit" class="btn btn-primary" id="saveProfBtn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<!-- Clean old corrupt data before modules load -->
+<script>
+  (function() {
+    try {
+      var teachers = JSON.parse(localStorage.getItem('qr_teachers') || '[]');
+      var cleaned = teachers.filter(function(t) { return t && t.name && typeof t.name === 'string'; });
+      if (cleaned.length !== teachers.length) {
+        localStorage.setItem('qr_teachers', JSON.stringify(cleaned));
+        console.log('Cleaned ' + (teachers.length - cleaned.length) + ' corrupt teacher records');
+      }
+      var students = JSON.parse(localStorage.getItem('qr_students') || '[]');
+      var cleanedS = students.filter(function(s) { return s && s.name && typeof s.name === 'string'; });
+      if (cleanedS.length !== students.length) {
+        localStorage.setItem('qr_students', JSON.stringify(cleanedS));
+      }
+    } catch(e) { console.warn('Data cleanup error:', e); }
+  })();
+</script>
+<script src="js/data.js?v=8"></script>
+<script src="js/auth.js?v=8"></script>
+<script src="js/charts.js?v=8"></script>
+<script src="js/qr.js?v=11"></script>
+<script src="js/pdf.js?v=11"></script>
+<script src="js/admin.js?v=11"></script>
+<script>
+  // Initialize lucide icons at the end
+  lucide.createIcons();
+</script>
+</body>
+</html>

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Davomat — Kirish</title>
+  <meta name="description" content="QR Kod orqali davomat kuzatish tizimi. Admin, O'qituvchi, O'quvchi va Skaner panellari.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       LOGIN PAGE — Ultra Premium Glassmorphism Design
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #7C3AED;
+      --primary-light: #A78BFA;
+      --primary-dark: #6D28D9;
+      --primary-glow: rgba(124, 58, 237, 0.4);
+      --accent: #06B6D4;
+      --accent-glow: rgba(6, 182, 212, 0.3);
+      --success: #10B981;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --bg-deep: #030712;
+      --bg-surface: rgba(15, 23, 42, 0.6);
+      --border-glass: rgba(148, 163, 184, 0.1);
+      --text-white: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    
+    body {
+      font-family: var(--font);
+      min-height: 100vh;
+      background: var(--bg-deep);
+      color: var(--text-white);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ---- Animated Mesh Gradient Background ---- */
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    
+    .bg-mesh::before {
+      content: '';
+      position: absolute;
+      width: 800px; height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      animation: meshFloat1 20s ease-in-out infinite;
+    }
+    
+    .bg-mesh::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 70%);
+      bottom: -150px; right: -100px;
+      animation: meshFloat2 25s ease-in-out infinite;
+    }
+    
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+    }
+    .bg-orb-1 {
+      width: 400px; height: 400px;
+      background: rgba(124, 58, 237, 0.2);
+      top: 20%; right: 15%;
+      animation: orbMove1 18s ease-in-out infinite;
+    }
+    .bg-orb-2 {
+      width: 300px; height: 300px;
+      background: rgba(6, 182, 212, 0.15);
+      bottom: 20%; left: 10%;
+      animation: orbMove2 22s ease-in-out infinite;
+    }
+    .bg-orb-3 {
+      width: 200px; height: 200px;
+      background: rgba(236, 72, 153, 0.12);
+      top: 60%; left: 50%;
+      animation: orbMove3 15s ease-in-out infinite;
+    }
+
+    @keyframes meshFloat1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(100px, 80px) scale(1.1); }
+      66% { transform: translate(-50px, 120px) scale(0.95); }
+    }
+    @keyframes meshFloat2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-80px, -60px) scale(1.05); }
+      66% { transform: translate(60px, -100px) scale(0.9); }
+    }
+    @keyframes orbMove1 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-60px, 40px); }
+    }
+    @keyframes orbMove2 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(50px, -30px); }
+    }
+    @keyframes orbMove3 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-40px, -50px); }
+    }
+    
+    /* ---- Grid Pattern Overlay ---- */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image: 
+        linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+    }
+
+    /* ---- Stars ---- */
+    .stars {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+    .star {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--dur) ease-in-out infinite;
+      opacity: 0;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; }
+      50% { opacity: var(--opacity); }
+    }
+
+    /* ---- Login Container ---- */
+    .login-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 440px;
+      padding: 20px;
+      animation: containerIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+    }
+    
+    @keyframes containerIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ---- Login Card ---- */
+    .login-card {
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+      border-radius: 28px;
+      padding: 48px 40px;
+      box-shadow: 
+        0 0 0 1px rgba(148, 163, 184, 0.05),
+        0 24px 48px -12px rgba(0, 0, 0, 0.5),
+        0 0 120px -20px rgba(124, 58, 237, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Card inner glow effect */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.5), rgba(6, 182, 212, 0.5), transparent);
+    }
+
+    /* ---- Logo ---- */
+    .login-logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .logo-icon-wrap {
+      position: relative;
+      display: inline-flex;
+      margin-bottom: 20px;
+    }
+    
+    .logo-icon {
+      width: 72px; height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 
+        0 8px 32px rgba(124, 58, 237, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+      position: relative;
+      z-index: 1;
+      animation: iconFloat 4s ease-in-out infinite;
+    }
+    
+    .logo-icon svg {
+      width: 36px;
+      height: 36px;
+      color: white;
+    }
+    
+    .logo-glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 26px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      filter: blur(20px);
+      opacity: 0.4;
+      z-index: 0;
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.1); }
+    }
+
+    .login-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #F8FAFC, #CBD5E1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    
+    .login-subtitle {
+      font-size: 14px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    /* ---- Form ---- */
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+    }
+    
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      color: var(--text-dim);
+      pointer-events: none;
+      transition: color 0.3s ease;
+      display: flex;
+      align-items: center;
+    }
+    
+    .input-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 16px 16px 16px 50px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 14px;
+      color: var(--text-white);
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .form-input::placeholder {
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+    
+    .form-input:focus {
+      border-color: rgba(124, 58, 237, 0.5);
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 
+        0 0 0 4px rgba(124, 58, 237, 0.1),
+        0 0 20px -4px rgba(124, 58, 237, 0.2);
+    }
+    
+    .form-input:focus + .input-focus-border,
+    .form-input:focus ~ .input-icon {
+      color: var(--primary-light);
+    }
+
+    /* Password toggle */
+    .toggle-password {
+      position: absolute;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s;
+    }
+    .toggle-password:hover { color: var(--text-muted); }
+    .toggle-password svg { width: 20px; height: 20px; }
+
+    /* ---- Error Box ---- */
+    .login-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #FCA5A5;
+      text-align: center;
+      display: none;
+      animation: shakeIn 0.5s ease;
+      backdrop-filter: blur(8px);
+    }
+    .login-error.show { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    
+    @keyframes shakeIn {
+      0% { transform: translateX(0); opacity: 0; }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(2px); opacity: 1; }
+      100% { transform: translateX(0); }
+    }
+
+    /* ---- Login Button ---- */
+    .login-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--primary), #9333EA);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.3px;
+    }
+    
+    .login-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.15), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s ease;
+    }
+    
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        0 12px 40px rgba(124, 58, 237, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    }
+    .login-btn:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .login-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+    
+    .login-btn.loading {
+      pointer-events: none;
+      opacity: 0.8;
+    }
+    
+    .btn-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .btn-content svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .btn-spinner {
+      display: none;
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .login-btn.loading .btn-spinner { display: inline-block; }
+    .login-btn.loading .btn-text { display: none; }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Divider ---- */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 8px 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.15), transparent);
+    }
+    .divider span {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* ---- Quick Login Roles ---- */
+    .quick-roles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .role-card {
+      padding: 14px 12px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+      border-radius: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .role-card:hover {
+      background: rgba(124, 58, 237, 0.08);
+      border-color: rgba(124, 58, 237, 0.25);
+      transform: translateY(-2px);
+    }
+    
+    .role-card:active {
+      transform: scale(0.97);
+    }
+    
+    .role-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .role-icon svg { width: 22px; height: 22px; }
+    
+    .role-icon.purple { background: rgba(124, 58, 237, 0.15); color: var(--primary-light); }
+    .role-icon.cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent); }
+    .role-icon.green { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .role-icon.amber { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    
+    .role-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .role-creds {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ---- Footer Text ---- */
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .login-footer a {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ---- Toast ---- */
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 14px;
+      min-width: 280px;
+      max-width: 380px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+      transform: translateX(120%);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-white);
+    }
+    .toast.show { transform: translateX(0); }
+    .toast-success { border-left: 3px solid var(--success); }
+    .toast-error { border-left: 3px solid var(--danger); }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 480px) {
+      .login-card { padding: 36px 24px; border-radius: 22px; }
+      .login-title { font-size: 24px; }
+      .quick-roles { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .logo-icon { width: 60px; height: 60px; border-radius: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-mesh">
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+</div>
+<div class="bg-grid"></div>
+<div class="stars" id="starsContainer"></div>
+
+<!-- Login Container -->
+<div class="login-container">
+  <div class="login-card">
+    
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-glow"></div>
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+      </div>
+      <h1 class="login-title">QR Davomat</h1>
+      <p class="login-subtitle">Zamonaviy davomat nazorat tizimi</p>
+    </div>
+
+    <!-- Form -->
+    <form class="login-form" id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label">Login</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </span>
+          <input type="text" id="username" class="form-input" placeholder="Loginni kiriting..." required autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Parol</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </span>
+          <input type="password" id="password" class="form-input" placeholder="Parolni kiriting..." required autocomplete="off">
+          <button type="button" class="toggle-password" id="togglePassword" tabindex="-1">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div class="login-error" id="loginError">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="loginErrorText">Login yoki parol noto'g'ri!</span>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="login-btn" id="loginBtn">
+        <span class="btn-content">
+          <span class="btn-spinner"></span>
+          <span class="btn-text">Tizimga kirish</span>
+          <svg class="btn-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </span>
+      </button>
+    </form>
+
+    <!-- Quick Roles -->
+    <div class="divider"><span>Tez kirish</span></div>
+
+    <div class="quick-roles">
+      <div class="role-card" onclick="quickLogin('admin', 'admin')">
+        <div class="role-icon purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-2 5l9-11h-5l2-5l-9 11h5"/></svg>
+        </div>
+        <div class="role-name">Admin</div>
+        <div class="role-creds">admin / admin</div>
+      </div>
+      <div class="role-card" onclick="quickLogin('scanner', 'scanner')">
+        <div class="role-icon cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="role-name">Skaner</div>
+        <div class="role-creds">scanner / scanner</div>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      QR Davomat Nazorat Tizimi &copy; 2026
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // Generate stars
+  const starsContainer = document.getElementById('starsContainer');
+  for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.setProperty('--dur', (3 + Math.random() * 5) + 's');
+    star.style.setProperty('--opacity', (0.3 + Math.random() * 0.7).toString());
+    star.style.animationDelay = Math.random() * 5 + 's';
+    star.style.width = star.style.height = (1 + Math.random() * 2) + 'px';
+    starsContainer.appendChild(star);
+  }
+
+  // Password toggle
+  const toggleBtn = document.getElementById('togglePassword');
+  const passInput = document.getElementById('password');
+  toggleBtn.addEventListener('click', () => {
+    const isPassword = passInput.type === 'password';
+    passInput.type = isPassword ? 'text' : 'password';
+    document.getElementById('eyeIcon').innerHTML = isPassword
+      ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+      : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  });
+
+  // Toast
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    const icons = {
+      success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    };
+    t.innerHTML = `${icons[type] || ''}<span>${msg}</span>`;
+    c.appendChild(t);
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
+  }
+
+  // Quick login
+  function quickLogin(username, password) {
+    document.getElementById('username').value = username;
+    document.getElementById('password').value = password;
+    document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+  }
+
+  // Check if already logged in
+  try {
+    const stored = localStorage.getItem('qr_current_user');
+    if (stored) {
+      const user = JSON.parse(stored);
+      if (user && user.id && user.role) {
+        const routes = {
+          admin: '/admin.html',
+          teacher: '/teacher.html',
+          student: '/student.html',
+          scanner: '/scanner.html',
+        };
+        if (routes[user.role]) {
+          window.location.href = routes[user.role];
+        }
+      }
+    }
+  } catch(e) {}
+
+  // Form submit — API login
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('loginError');
+    const errText = document.getElementById('loginErrorText');
+    const btn = document.getElementById('loginBtn');
+
+    if (!username || !password) {
+      errText.textContent = "Iltimos login va parolni kiriting!";
+      errEl.classList.add('show');
+      setTimeout(() => errEl.classList.remove('show'), 4000);
+      return;
+    }
+
+    // Show loading
+    btn.classList.add('loading');
+    errEl.classList.remove('show');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        localStorage.setItem('qr_current_user', JSON.stringify(data.user));
+        showToast("Muvaffaqiyatli kirildi!", 'success');
+        
+        const routes = {
+          admin: '/admin.html',
+          teacher: '/teacher.html',
+          student: '/student.html',
+          scanner: '/scanner.html',
+        };
+        
+        setTimeout(() => {
+          window.location.href = routes[data.user.role] || '/';
+        }, 600);
+      } else {
+        btn.classList.remove('loading');
+        errText.textContent = "Login yoki parol noto'g'ri!";
+        errEl.classList.add('show');
+        showToast("Login yoki parol xato!", 'error');
+        setTimeout(() => errEl.classList.remove('show'), 5000);
+      }
+    } catch(err) {
+      btn.classList.remove('loading');
+      errText.textContent = "Server bilan aloqa yo'q! Qayta urinib ko'ring.";
+      errEl.classList.add('show');
+      showToast("Server bilan aloqa yo'q!", 'error');
+      setTimeout(() => errEl.classList.remove('show'), 5000);
+    }
+  });
+</script>
+</body>
+</html>
