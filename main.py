@@ -20,8 +20,9 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="QR Kod Nazorat API")
 
-# Frontend papkasi
-FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public"))
+# Frontend papkasi (lokal yoki server deploy strukturasi uchun)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = current_dir
 
 # Setup CORS
 app.add_middleware(
@@ -323,6 +324,6 @@ def serve_student():
 def serve_scanner():
     return FileResponse(os.path.join(FRONTEND_DIR, "scanner.html"))
 
-# CSS va JS static fayllar
-app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
-app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
+# CSS va JS static fayllar (barchasi bitta papkada bo'lgani uchun)
+app.mount("/css", StaticFiles(directory=FRONTEND_DIR), name="css")
+app.mount("/js", StaticFiles(directory=FRONTEND_DIR), name="js")
