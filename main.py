@@ -18,6 +18,36 @@ import schemas
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
+# Auto-migration: add newly added columns if they don't exist in the uploaded DB
+from sqlalchemy import text
+with engine.connect() as conn:
+    # Attendance table missing columns
+    try: conn.execute(text("ALTER TABLE attendance ADD COLUMN time_out VARCHAR"))
+    except Exception: pass
+    try: conn.execute(text("ALTER TABLE attendance ADD COLUMN balls INTEGER DEFAULT 3"))
+    except Exception: pass
+    
+    # User table missing columns
+    try: conn.execute(text("ALTER TABLE users ADD COLUMN student_id VARCHAR"))
+    except Exception: pass
+    try: conn.execute(text("ALTER TABLE users ADD COLUMN teacher_id VARCHAR"))
+    except Exception: pass
+    try: conn.execute(text("ALTER TABLE users ADD COLUMN avatar TEXT"))
+    except Exception: pass
+    
+    # Teacher table missing columns
+    try: conn.execute(text("ALTER TABLE teachers ADD COLUMN job_type VARCHAR"))
+    except Exception: pass
+    try: conn.execute(text("ALTER TABLE teachers ADD COLUMN avatar TEXT"))
+    except Exception: pass
+    
+    # Student table missing columns
+    try: conn.execute(text("ALTER TABLE students ADD COLUMN avatar TEXT"))
+    except Exception: pass
+
+    try: conn.commit()
+    except Exception: pass
+
 app = FastAPI(title="QR Kod Nazorat API")
 
 # Frontend papkasi (lokal yoki server deploy strukturasi uchun)
