@@ -20,12 +20,8 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="QR Kod Nazorat API")
 
-# Frontend papkasi (lokal yoki server deploy strukturasi uchun)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists(os.path.join(current_dir, "public")):
-    FRONTEND_DIR = os.path.join(current_dir, "public")
-else:
-    FRONTEND_DIR = os.path.abspath(os.path.join(current_dir, "..", "public"))
+FRONTEND_DIR = current_dir
 
 # Setup CORS
 app.add_middleware(
