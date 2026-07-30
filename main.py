@@ -324,6 +324,17 @@ def serve_student():
 def serve_scanner():
     return FileResponse(os.path.join(FRONTEND_DIR, "scanner.html"))
 
-# CSS va JS static fayllar
-app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
-app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
+# CSS va JS static fayllar (Papka yo'qligi uchun to'g'ridan-to'g'ri ildizdan beriladi)
+@app.get("/css/{filename}")
+def serve_css(filename: str):
+    file_path = os.path.join(FRONTEND_DIR, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="File not found")
+
+@app.get("/js/{filename}")
+def serve_js(filename: str):
+    file_path = os.path.join(FRONTEND_DIR, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="File not found")
