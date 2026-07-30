@@ -48,62 +48,39 @@ const ScannerManager = {
   },
 
   start(onSuccess) {
-    if (this.isRunning) return;
-    this.initBeep(); // Ovozni yoqish (Unlock audio)
-    const html5QrCode = new Html5Qrcode('reader');
-    this.scanner = html5QrCode;
-
-    // ========================================
-    // TEZLASHTIRILGAN KAMERA SOZLAMALARI
-    // ========================================
-    const scanConfig = {
-      fps: 60,                              // Yana ham tezroq (30 -> 60 FPS)
-      formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ], // Faqat QR kodlarni o'qiydi (tezlikni juda oshiradi)
-      qrbox: function(viewfinderWidth, viewfinderHeight) {
-        // Kattaroq skanerlash maydoni = tezroq tanish
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const size = Math.floor(minEdge * 0.85); // 85% maydoni skanerga
-        return { width: size, height: size };
-      },
-      aspectRatio: 1.0,
-      disableFlip: false,
-      // Skanerlash vaqtini oshirish uchun experimental sozlamalar
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true   // BarcodeDetector API (Chrome 83+, tezroq)
-      }
-    };
-
-    // Kamerani yuqori sifatda ochish uchun constraints
-    const cameraConstraints = {
-      facingMode: "environment",    // Orqa kamera
-      width: { ideal: 1280 },      // Yuqori sifat = tezroq QR tanish
-      height: { ideal: 720 },
-      focusMode: "continuous",      // Doim fokus
-      exposureMode: "continuous"
-    };
-
-    // Avval kameralar ro'yxatini olishga harakat qilamiz
-    Html5Qrcode.getCameras().then(cameras => {
-      if (!cameras || cameras.length === 0) {
-        this.showError('Kamera topilmadi!');
+    return new Promise((resolve, reject) => {
+      if (this.isRunning) {
+        resolve();
         return;
       }
+      this.initBeep();
+      const html5QrCode = new Html5Qrcode('reader');
+      this.scanner = html5QrCode;
 
-      // Orqa kamerani topish
-      const backCam = cameras.find(c => {
-        const label = c.label.toLowerCase();
-        return label.includes('back') || label.includes('rear') || label.includes('environment');
-      });
+      const scanConfig = {
+        fps: 60,
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.floor(minEdge * 0.85);
+          return { width: size, height: size };
+        },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      };
 
-      // Agar orqa kamera topilsa, uning ID sidan foydalanamiz
-      // Aks holda cameraConstraints ishlatamiz
+      const camSelect = document.getElementById('cameraSelect');
       let cameraConfig;
-      if (backCam) {
-        cameraConfig = backCam.id;
-      } else if (cameras.length === 1) {
-        cameraConfig = cameras[0].id;
+      if (camSelect && camSelect.value) {
+        if (camSelect.value === 'environment' || camSelect.value === 'user') {
+          cameraConfig = { facingMode: camSelect.value };
+        } else {
+          cameraConfig = camSelect.value;
+        }
       } else {
-        // facingMode bilan ishga tushiramiz
         cameraConfig = { facingMode: "environment" };
       }
 
@@ -111,29 +88,56 @@ const ScannerManager = {
         cameraConfig,
         scanConfig,
         (decodedText) => this.onScan(decodedText, onSuccess),
-        (err) => {} // suppress errors
+        (err) => {}
       ).then(() => {
         this.isRunning = true;
         document.getElementById('scanner-status')?.classList.add('active');
-
-        // Kamerani torch/focus qo'shimcha optimizatsiya
         this._optimizeCamera(html5QrCode);
+        
+        if (camSelect && camSelect.options.length <= 2) {
+           Html5Qrcode.getCameras().then(cameras => {
+              if(cameras && cameras.length > 0) {
+                  cameras.forEach((cam, index) => {
+                    const option = document.createElement('option');
+                    option.value = cam.id;
+                    option.text = cam.label || `Kamera ${index + 1}`;
+                    camSelect.appendChild(option);
+                  });
+              }
+           }).catch(()=>{});
+        }
+        resolve();
       }).catch(err => {
-        // Agar birinchi urinish muvaffaqiyatsiz bo'lsa, oddiy config bilan qayta urinish
-        console.warn('Birinchi urinish muvaffaqiyatsiz, qayta urinilmoqda...', err);
-        html5QrCode.start(
-          cameras[0].id,
-          { fps: 30, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ], qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          (decodedText) => this.onScan(decodedText, onSuccess),
-          (err) => {}
-        ).then(() => {
-          this.isRunning = true;
-        }).catch(err2 => {
-          this.showError('Kamera ishga tushmadi: ' + err2);
+        console.warn('Kamera ishga tushishida xatolik:', err);
+        Html5Qrcode.getCameras().then(cameras => {
+          if (cameras && cameras.length > 0) {
+            // Orqa kamerani qidirish
+            let fallbackCam = cameras[0].id;
+            const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear') || c.label.toLowerCase().includes('environment'));
+            if (backCam) fallbackCam = backCam.id;
+
+            html5QrCode.start(
+              fallbackCam,
+              scanConfig,
+              (decodedText) => this.onScan(decodedText, onSuccess),
+              (err2) => {}
+            ).then(() => {
+              this.isRunning = true;
+              document.getElementById('scanner-status')?.classList.add('active');
+              resolve();
+            }).catch(err3 => {
+              this.showError('Kamera ishga tushmadi: ' + err3);
+              reject(err3);
+            });
+          } else {
+            this.showError('Kamera topilmadi!');
+            reject('Kamera topilmadi!');
+          }
+        }).catch(err4 => {
+          this.showError('Kamera ruxsati berilmadi yoki mavjud emas!');
+          reject('Kamera ruxsati berilmadi yoki mavjud emas!');
         });
       });
-    }).catch(err => {
-      this.showError('Kamera ruxsati berilmadi yoki mavjud emas!');
     });
   },
 
@@ -174,12 +178,16 @@ const ScannerManager = {
     }
   },
 
+  isProcessing: false,
+
   async onScan(decodedText, onSuccess) {
-    // Cooldown — takroriy skanerlashni oldini olish
-    // 800ms -> 400ms ga qisqartirildi (tezroq ketma-ket skanerlash)
-    if (this.cooldown) return;
+    // Agar bitta QR kod tekshirilayotgan bo'lsa yoki kutish vaqti tugamagan bo'lsa, e'tiborga olmaslik
+    if (this.isProcessing || this.cooldown) return;
+    this.isProcessing = true;
+    
+    // Keyingi skanerni 3 soniyaga to'xtatib turish
     this.cooldown = true;
-    setTimeout(() => { this.cooldown = false; }, 400);
+    setTimeout(() => { this.cooldown = false; }, 3000);
 
     // QR ma'lumotini parse qilish
     // Format: TEACHER:id yoki STUDENT:id
@@ -219,13 +227,14 @@ const ScannerManager = {
         error: false,
         warning: false,
         person,
-        balls: isExit ? 0 : 3, // Faqat kirganda ball beramiz, yoki xohlasangiz 0 qiling
+        balls: (isExit || personType !== 'student') ? 0 : 3, // Faqat o'quvchi kirganda 3 ball beramiz
         message: `${person?.name || 'Noma\'lum'} — ${isExit ? 'Chiqdi (Xayr)' : 'Kirdi! +3 ball 🎉'}`,
         time: isExit ? (result.record ? result.record.timeOut : '') : (result.record ? result.record.time : ''),
       });
     }
 
     if (onSuccess) onSuccess(result, person, personType);
+    this.isProcessing = false;
   },
 
   showResult(data) {

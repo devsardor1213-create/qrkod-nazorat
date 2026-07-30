@@ -53,6 +53,17 @@
     }
     .pr-history-item:hover { background: var(--pr-surface-hover); }
     .pr-history-item:last-child { border-bottom: none; }
+    
+    /* Responsive Settings for Mobile */
+    @media (max-width: 768px) {
+      .pr-scanner-stats { display: none !important; }
+      .pr-recent-scans { display: none !important; }
+      .pr-scanner-main { grid-template-columns: 1fr !important; gap: 0 !important; }
+      .pr-scanner-container { padding: 12px; }
+      header { flex-direction: column; align-items: center !important; gap: 12px; margin-bottom: 20px !important; }
+      .pr-scan-box-wrap { padding: 16px; margin: 0 auto; max-width: 100%; border: none; box-shadow: none; background: transparent; }
+      .pr-scan-area { max-width: 100%; }
+    }
   </style>
   <!-- html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -100,13 +111,18 @@
     </div>
   </div>
 
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px; align-items:start;">
+  <div class="pr-scanner-main" style="display:grid; grid-template-columns: 1fr 1fr; gap:40px; align-items:start;">
     
     <!-- Scanner Side -->
     <div class="pr-scan-box-wrap">
       <div style="text-align:center; margin-bottom:24px;">
         <h2 style="font-size:20px; font-weight:700; margin:0 0 8px 0;">Kamerani to'g'rilang</h2>
-        <p style="color:var(--pr-text-muted); font-size:14px; margin:0;">QR kodni hoshiya markaziga joylashtiring</p>
+        <p style="color:var(--pr-text-muted); font-size:14px; margin:0; margin-bottom: 12px;">QR kodni hoshiya markaziga joylashtiring</p>
+        
+        <select id="cameraSelect" onchange="changeCamera()" style="width:100%; max-width:250px; background:var(--pr-surface-hover); color:#fff; border:1px solid var(--pr-border); padding:10px 16px; border-radius:8px; font-size:14px; outline:none; cursor:pointer;">
+          <option value="environment">Orqa kamera (Avto)</option>
+          <option value="user">Old kamera (Avto)</option>
+        </select>
       </div>
 
       <div class="pr-scan-area">
@@ -189,13 +205,27 @@
   }
 
   function startScanner() {
-    document.getElementById('startBtn').style.display = 'none';
-    document.getElementById('stopBtn').style.display = 'inline-flex';
-    document.getElementById('scanLine').style.display = 'block';
+    const startBtn = document.getElementById('startBtn');
+    const origHTML = startBtn.innerHTML;
+    startBtn.disabled = true;
+    startBtn.style.opacity = '0.7';
+    startBtn.innerHTML = 'Kuting...';
     
     ScannerManager.start((result, person, personType) => {
       updateStats();
       addToRecent(result, person, personType);
+    }).then(() => {
+      startBtn.style.display = 'none';
+      startBtn.disabled = false;
+      startBtn.style.opacity = '1';
+      startBtn.innerHTML = origHTML;
+      document.getElementById('stopBtn').style.display = 'inline-flex';
+      document.getElementById('scanLine').style.display = 'block';
+    }).catch(err => {
+      startBtn.disabled = false;
+      startBtn.style.opacity = '1';
+      startBtn.innerHTML = origHTML;
+      showToast('Kamera xatosi: ' + err, 'error');
     });
   }
 
@@ -247,6 +277,14 @@
   function clearRecent() {
     sessionScans = [];
     renderRecent();
+  }
+
+  function changeCamera() {
+    // Agar skaner ishlab turgan bo'lsa, o'chirib yoqish
+    if (document.getElementById('startBtn').style.display === 'none') {
+      stopScanner();
+      setTimeout(() => startScanner(), 500);
+    }
   }
 </script>
 </body>

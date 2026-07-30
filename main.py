@@ -18,41 +18,14 @@ import schemas
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
-# Auto-migration: add newly added columns if they don't exist in the uploaded DB
-from sqlalchemy import text
-with engine.connect() as conn:
-    # Attendance table missing columns
-    try: conn.execute(text("ALTER TABLE attendance ADD COLUMN time_out VARCHAR"))
-    except Exception: pass
-    try: conn.execute(text("ALTER TABLE attendance ADD COLUMN balls INTEGER DEFAULT 3"))
-    except Exception: pass
-    
-    # User table missing columns
-    try: conn.execute(text("ALTER TABLE users ADD COLUMN student_id VARCHAR"))
-    except Exception: pass
-    try: conn.execute(text("ALTER TABLE users ADD COLUMN teacher_id VARCHAR"))
-    except Exception: pass
-    try: conn.execute(text("ALTER TABLE users ADD COLUMN avatar TEXT"))
-    except Exception: pass
-    
-    # Teacher table missing columns
-    try: conn.execute(text("ALTER TABLE teachers ADD COLUMN job_type VARCHAR"))
-    except Exception: pass
-    try: conn.execute(text("ALTER TABLE teachers ADD COLUMN avatar TEXT"))
-    except Exception: pass
-    
-    # Student table missing columns
-    try: conn.execute(text("ALTER TABLE students ADD COLUMN avatar TEXT"))
-    except Exception: pass
-
-    try: conn.commit()
-    except Exception: pass
-
 app = FastAPI(title="QR Kod Nazorat API")
 
 # Frontend papkasi (lokal yoki server deploy strukturasi uchun)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_DIR = current_dir
+if os.path.exists(os.path.join(current_dir, "public")):
+    FRONTEND_DIR = os.path.join(current_dir, "public")
+else:
+    FRONTEND_DIR = os.path.abspath(os.path.join(current_dir, "..", "public"))
 
 # Setup CORS
 app.add_middleware(
@@ -290,9 +263,10 @@ def add_attendance(req: schemas.AttendanceCreate, db: Session = Depends(get_db))
                 return {"success": True, "type": "chiqish", "id": existing.id}
         
     a_id = gen_id('a')
+    balls = 3 if req.personType == 'student' else 0
     db_att = models.Attendance(
         id=a_id, date=req.date, person_id=req.personId, 
-        person_type=req.personType, time=req.time
+        person_type=req.personType, time=req.time, balls=balls
     )
     db.add(db_att)
     db.commit()
@@ -354,6 +328,6 @@ def serve_student():
 def serve_scanner():
     return FileResponse(os.path.join(FRONTEND_DIR, "scanner.html"))
 
-# CSS va JS static fayllar (barchasi bitta papkada bo'lgani uchun)
-app.mount("/css", StaticFiles(directory=FRONTEND_DIR), name="css")
-app.mount("/js", StaticFiles(directory=FRONTEND_DIR), name="js")
+# CSS va JS static fayllar
+app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
