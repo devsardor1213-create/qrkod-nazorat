@@ -66,76 +66,74 @@ const ScannerManager = {
           return { width: size, height: size };
         },
         aspectRatio: 1.0,
-        disableFlip: false,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        }
+        disableFlip: false
       };
 
       const camSelect = document.getElementById('cameraSelect');
-      let cameraConfig;
-      if (camSelect && camSelect.value) {
-        if (camSelect.value === 'environment' || camSelect.value === 'user') {
-          cameraConfig = { facingMode: camSelect.value };
-        } else {
-          cameraConfig = camSelect.value;
-        }
-      } else {
-        cameraConfig = { facingMode: "environment" };
-      }
 
-      html5QrCode.start(
-        cameraConfig,
-        scanConfig,
-        (decodedText) => this.onScan(decodedText, onSuccess),
-        (err) => {}
-      ).then(() => {
-        this.isRunning = true;
-        document.getElementById('scanner-status')?.classList.add('active');
-        this._optimizeCamera(html5QrCode);
-        
-        if (camSelect && camSelect.options.length <= 2) {
-           Html5Qrcode.getCameras().then(cameras => {
-              if(cameras && cameras.length > 0) {
-                  cameras.forEach((cam, index) => {
-                    const option = document.createElement('option');
-                    option.value = cam.id;
-                    option.text = cam.label || `Kamera ${index + 1}`;
-                    camSelect.appendChild(option);
-                  });
-              }
-           }).catch(()=>{});
-        }
-        resolve();
-      }).catch(err => {
-        console.warn('Kamera ishga tushishida xatolik:', err);
-        Html5Qrcode.getCameras().then(cameras => {
-          if (cameras && cameras.length > 0) {
-            // Orqa kamerani qidirish
-            let fallbackCam = cameras[0].id;
-            const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear') || c.label.toLowerCase().includes('environment'));
-            if (backCam) fallbackCam = backCam.id;
-
-            html5QrCode.start(
-              fallbackCam,
-              scanConfig,
-              (decodedText) => this.onScan(decodedText, onSuccess),
-              (err2) => {}
-            ).then(() => {
-              this.isRunning = true;
-              document.getElementById('scanner-status')?.classList.add('active');
-              resolve();
-            }).catch(err3 => {
-              this.showError('Kamera ishga tushmadi: ' + err3);
-              reject(err3);
+      // Always request cameras first to get permissions and correct IDs
+      Html5Qrcode.getCameras().then(cameras => {
+        if (cameras && cameras.length > 0) {
+          // Populate select if it's empty
+          if (camSelect && camSelect.options.length <= 2) {
+            camSelect.innerHTML = '';
+            cameras.forEach((cam, index) => {
+              const option = document.createElement('option');
+              option.value = cam.id;
+              option.text = cam.label || `Kamera ${index + 1}`;
+              camSelect.appendChild(option);
             });
-          } else {
-            this.showError('Kamera topilmadi!');
-            reject('Kamera topilmadi!');
+            // Try to auto-select back camera
+            const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment') || c.label.toLowerCase().includes('orqa'));
+            if (backCam) {
+              camSelect.value = backCam.id;
+            }
           }
-        }).catch(err4 => {
-          this.showError('Kamera ruxsati berilmadi yoki mavjud emas!');
-          reject('Kamera ruxsati berilmadi yoki mavjud emas!');
+
+          let cameraIdToStart = cameras[0].id; // default to first
+          if (camSelect && camSelect.value && camSelect.value !== 'environment' && camSelect.value !== 'user') {
+            cameraIdToStart = camSelect.value;
+          } else {
+            const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment') || c.label.toLowerCase().includes('orqa'));
+            if (backCam) cameraIdToStart = backCam.id;
+          }
+
+          html5QrCode.start(
+            cameraIdToStart,
+            scanConfig,
+            (decodedText) => this.onScan(decodedText, onSuccess),
+            (err) => {}
+          ).then(() => {
+            this.isRunning = true;
+            document.getElementById('scanner-status')?.classList.add('active');
+            this._optimizeCamera(html5QrCode);
+            resolve();
+          }).catch(err => {
+            this.showError('Kamera xatosi: ' + err);
+            reject(err);
+          });
+        } else {
+          reject("Kameralar ro'yxati bo'sh!");
+        }
+      }).catch(err => {
+        // Fallback if getCameras fails
+        let fallbackConfig = { facingMode: "environment" };
+        if (camSelect && (camSelect.value === 'user' || camSelect.value === 'environment')) {
+            fallbackConfig = { facingMode: camSelect.value };
+        }
+        
+        html5QrCode.start(
+          fallbackConfig,
+          scanConfig,
+          (decodedText) => this.onScan(decodedText, onSuccess),
+          (err) => {}
+        ).then(() => {
+          this.isRunning = true;
+          document.getElementById('scanner-status')?.classList.add('active');
+          resolve();
+        }).catch(err2 => {
+          this.showError('Kamera ruxsati berilmadi yoki xato: ' + err2);
+          reject(err2);
         });
       });
     });
