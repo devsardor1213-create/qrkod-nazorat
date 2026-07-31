@@ -2,12 +2,13 @@
 // DATA.JS — LocalStorage + Node.js API (Hybrid Mode)
 // ============================================================
 
-const hostname = window.location.hostname || '127.0.0.1';
 let API_URL = '/api';
+// Agar to'g'ridan to'g'ri fayl (file://) qilib ochilsa
 if (window.location.protocol === 'file:') {
     API_URL = 'http://127.0.0.1:8000/api';
-} else if (window.location.port !== '8000' && window.location.port !== '') {
-    API_URL = `http://${hostname}:8000/api`;
+} else if (window.location.port === '5500' || window.location.port === '5501') {
+    // Agar VS Code Live Server ishlatilsa
+    API_URL = `http://${window.location.hostname}:8000/api`;
 }
 
 const DB = {
@@ -44,18 +45,20 @@ const DB = {
   // ---------- INIT ----------
   async pullFromAPI() {
     try {
+      const opts = { cache: 'no-store' };
       const [t, s, g, a] = await Promise.all([
-        fetch(API_URL + '/teachers').then(res => res.json()),
-        fetch(API_URL + '/students').then(res => res.json()),
-        fetch(API_URL + '/groups').then(res => res.json()),
-        fetch(API_URL + '/attendance').then(res => res.json())
+        fetch(API_URL + '/teachers', opts).then(res => res.json()),
+        fetch(API_URL + '/students', opts).then(res => res.json()),
+        fetch(API_URL + '/groups', opts).then(res => res.json()),
+        fetch(API_URL + '/attendance', opts).then(res => res.json())
       ]);
       this.set(this.KEYS.TEACHERS, t);
       this.set(this.KEYS.STUDENTS, s);
       this.set(this.KEYS.GROUPS, g);
       this.set(this.KEYS.ATTENDANCE, a);
     } catch (e) {
-      console.warn("API Server is not running! Fallback to LocalStorage.", e);
+      console.error("API xatosi:", e);
+      alert("Diqqat! Server bilan aloqa yo'q. Hozirgi ma'lumotlar eskirgan yoki xato bo'lishi mumkin.");
     }
   },
 
