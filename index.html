@@ -783,7 +783,15 @@
     errEl.classList.remove('show');
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const hostname = window.location.hostname || '127.0.0.1';
+      let API_URL = '/api';
+      if (window.location.protocol === 'file:') {
+          API_URL = 'http://127.0.0.1:8000/api';
+      } else if (window.location.port !== '8000' && window.location.port !== '') {
+          API_URL = `http://${hostname}:8000/api`;
+      }
+
+      const res = await fetch(API_URL + '/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

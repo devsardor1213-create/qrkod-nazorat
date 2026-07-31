@@ -2,7 +2,13 @@
 // DATA.JS — LocalStorage + Node.js API (Hybrid Mode)
 // ============================================================
 
-const API_URL = '/api';
+const hostname = window.location.hostname || '127.0.0.1';
+let API_URL = '/api';
+if (window.location.protocol === 'file:') {
+    API_URL = 'http://127.0.0.1:8000/api';
+} else if (window.location.port !== '8000' && window.location.port !== '') {
+    API_URL = `http://${hostname}:8000/api`;
+}
 
 const DB = {
   // ---------- KEYS ----------
